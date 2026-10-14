@@ -228,7 +228,25 @@ exports.config = {
         type: 'string',
         label: 'Cookie Name',
         defaultValue: 'example-splashpage',
-        showIf: values => values.mode !== 'off'
+        showIf: values => values.mode !== 'off',
+        helperText: "May contain `{{EFFECTIVE_DATE}}`, which is replaced by the date below -- e.g. `agree-to-terms-{{EFFECTIVE_DATE}}`. Moving the date then renames the cookie, so everyone who accepted the old version is asked again.",
+    },
+    effectiveDate: {
+        // A plain string rather than a date picker: what the page needs is the
+        // calendar day as written, and a date_time field would carry a time and
+        // a time zone that can shift it by one on the way through.
+        type: 'string',
+        label: 'Effective Date',
+        defaultValue: '',
+        showIf: values => values.mode !== 'off',
+        getError: v => {
+            if (!v) return false
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v)
+            if (!m) return "format is YYYY-MM-DD"
+            const d = new Date(Date.UTC(+m[1], m[2] - 1, +m[3]))
+            return d.getUTCMonth() === m[2] - 1 && d.getUTCDate() === +m[3] ? false : "not a real date"
+        },
+        helperText: "The date the terms on the splash page took effect, as `YYYY-MM-DD`. Substituted for `{{EFFECTIVE_DATE}}` in the page and in the cookie name; the page formats it for display itself.",
     },
     cookieDays: {
         type: 'number',
@@ -564,7 +582,10 @@ exports.init = api => {
 
         // Deliberately after the rules: someone who already accepted keeps their
         // pass even on a deny path, rather than being prompted again every visit.
-        const cookieName = api.getConfig('cookieName')
+        // Expanded here, not just in the page, because the name the page sets
+        // and the name checked here have to be the same string.
+        const effectiveDate = api.getConfig('effectiveDate') || ''
+        const cookieName = String(api.getConfig('cookieName') || '').replace(/\{\{EFFECTIVE_DATE\}\}/g, effectiveDate)
         if (getCookie(ctx.get('cookie'), cookieName) === 'true') {
             trace('skip', 'cookie accepted')
             return
@@ -580,8 +601,11 @@ exports.init = api => {
             }
         }
 
-        html = html.replace(/\{\{COOKIE_NAME\}\}/g, cookieName)
-        html = html.replace(/\{\{COOKIE_DAYS\}\}/g, api.getConfig('cookieDays'))
+        // Function replacements, so a "$" in a value is inserted as itself
+        // instead of being read as a replacement pattern.
+        html = html.replace(/\{\{COOKIE_NAME\}\}/g, () => cookieName)
+        html = html.replace(/\{\{COOKIE_DAYS\}\}/g, () => api.getConfig('cookieDays'))
+        html = html.replace(/\{\{EFFECTIVE_DATE\}\}/g, () => effectiveDate)
 
         trace('splash', why)
         ctx.status = 200
