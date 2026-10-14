@@ -123,12 +123,15 @@ not listed, whichever way round the list is being read.
 - **Log Every Decision** — writes one line per request into the log panel of this dialog,
   naming the rule that decided it. Noisy; for troubleshooting only.
 - **Cookie Name / Duration** — how acceptance is remembered.
+- **Effective Date** — the date the terms took effect, as `YYYY-MM-DD`. It replaces
+  `{{EFFECTIVE_DATE}}` in the page and in the cookie name, so a name like
+  `agree-to-terms-{{EFFECTIVE_DATE}}` makes every visitor accept again once the date moves.
 - **Use Custom HTML File** — replaces the bundled page. The path field has a browse button
   that opens HFS's server-side file picker, starting at the bundled `public/index.html` so
   you can find the file to copy. The file is re-read on every request, so edits appear
   without reloading the plugin; if it cannot be read the bundled page is served instead and
-  the reason is logged. `{{COOKIE_NAME}}` and `{{COOKIE_DAYS}}` are substituted before it is
-  served.
+  the reason is logged. `{{COOKIE_NAME}}`, `{{COOKIE_DAYS}}` and `{{EFFECTIVE_DATE}}` are
+  substituted before it is served.
 
 Requests to the admin panel (`/~`) are never covered. An accepted cookie wins over a `Deny`
 rule, so a visitor who already accepted is not prompted again.
